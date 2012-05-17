@@ -1,0 +1,20 @@
+{
+  "name": "youRoomHelper",
+  "version": "0.0.1.0",
+  "description": "youRoom helper for more comfortable use",
+  "content_scripts": [
+    {
+      "all_frames": true,
+      "matches": [
+        "http://www.youroom.in/*",
+        "https://www.youroom.in/*"
+      ],
+      "js": ["jquery.js", "content.js"],
+      "run_at": "document_start"
+    }
+  ],
+  "permissions": [
+   "http://www.youroom.in/*",
+   "https://www.youroom.in/*"
+  ]
+}
