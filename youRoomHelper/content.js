@@ -82,17 +82,17 @@ youRoomHelper = {
 		//ミーティングモード用移動ボタンを追加
 		addMeetingBtn: function(){
 			var imgUrl = chrome.extension.getURL('/images/meeting.png');
-			$('.entry-container').find('.topic-edit-actions').each(function(){
+			$('.entry-container').each(function(){
 				var $this = $(this), c;
-				c = $this.find('.btn-edit').closest('li').clone();
-				c.find('a')
-					.removeClass('edit_comment')
-					.css({backgroundImage: 'url(' + imgUrl + ')'})
-					.find('span').text('ミーティング')
-					.click(function(){
-						sessionStorage[STORE_KEY.MEETING_MODE] = 'on';
-					});
-				c.appendTo($this);
+				var entryRoom = $this.find('[name=parma_url]').val();
+				var $ul = $('<ul class="topic-edit-actions"><li><p class="btn-edit">' +
+							'<a href="' + entryRoom + '"><span>ミーティング</span></a>');
+				var $a = $ul.find('a')
+						.css({backgroundImage: 'url(' + imgUrl + ')'})
+						.click(function(){
+							sessionStorage[STORE_KEY.MEETING_MODE] = 'on';
+						});
+				$this.find('.action-wrapper').prepend($ul);
 			});
 		},
 

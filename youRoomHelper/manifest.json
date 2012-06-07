@@ -1,6 +1,6 @@
 {
   "name": "youRoomHelper",
-  "version": "0.0.2.0",
+  "version": "0.0.2.1",
   "description": "youRoom helper for more comfortable use",
   "content_scripts": [ {
       "all_frames": true,
