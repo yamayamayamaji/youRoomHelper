@@ -1,0 +1,106 @@
+/*!
+ * contents.css
+ * in youRoomHelper (Google Chrome Extension)
+ * https://github.com/yamayamayamaji/youRoomHelper
+ * Copyright 2012, Ryosuke Yamaji
+ *
+ * License: MIT
+ * ref: http://daneden.me/animate/
+ */
+@keyframes bounceIn {
+	0% { opacity: 0; transform: scale(.3); }
+	50% { opacity: 1; transform: scale(1.05); }
+	70% { transform: scale(.9); }
+	100% { transform: scale(1); }
+}
+@-webkit-keyframes bounceIn {
+	0% { opacity: 0; -webkit-transform: scale(.3); }
+	50% { opacity: 1; -webkit-transform: scale(1.05); }
+	70% { -webkit-transform: scale(.9); }
+	100% { -webkit-transform: scale(1); }
+}
+.bounceIn {
+	animation-name: bounceIn;
+	-webkit-animation-name: bounceIn;
+	animation-fill-mode: both;
+	-webkit-animation-fill-mode: both;
+	animation-duration: 1s;
+	-webkit-animation-duration: 1s;
+}
+
+@keyframes bounceOut {
+	0% { transform: scale(1); }
+	25% { transform: scale(.95); }
+	50% { opacity: 1; transform: scale(1.1); }
+	100% { opacity: 0; transform: scale(.3); }	
+}
+@-webkit-keyframes bounceOut {
+	0% { -webkit-transform: scale(1); }
+	25% { -webkit-transform: scale(.95); }
+	50% { opacity: 1; -webkit-transform: scale(1.1); }
+	100% { opacity: 0; -webkit-transform: scale(.3); }	
+}
+.bounceOut {
+	animation-name: bounceOut;
+	-webkit-animation-name: bounceOut;
+	animation-fill-mode: both;
+	-webkit-animation-fill-mode: both;
+	animation-duration: 1s;
+	-webkit-animation-duration: 1s;
+}
+
+@keyframes fadeOut {
+	0% { opacity: 1; }
+	100% { opacity: 0; }
+}
+@-webkit-keyframes fadeOut {
+	0% { opacity: 1; }
+	100% { opacity: 0; }
+}
+.fadeOut {
+	animation-name: fadeOut;
+	-webkit-animation-name: fadeOut;
+	animation-fill-mode: both;
+	-webkit-animation-fill-mode: both;
+	animation-duration: 1s;
+	-webkit-animation-duration: 1s;
+}
+
+@keyframes fadeOutDown {
+	0% { opacity: 1; transform: translateY(0); }
+	100% { opacity: 0; transform: translateY(20px); }
+}
+@-webkit-keyframes fadeOutDown {
+	0% { opacity: 1; -webkit-transform: translateY(0); }
+	100% { opacity: 0; -webkit-transform: translateY(20px); }
+}
+.fadeOutDown {
+	animation-name: fadeOutDown;
+	-webkit-animation-name: fadeOutDown;
+	animation-fill-mode: both;
+	-webkit-animation-fill-mode: both;
+	animation-duration: 1s;
+	-webkit-animation-duration: 1s;
+}
+
+.unreadBadge {
+	background-color: #ff0033;
+	border-radius: 10px;
+	color: #ffffff;
+	font-family: Helvetica Neue, Helvetica, Arial, sans-serif;
+	font-size: 20px;
+	font-weight: bold;
+	line-height: 28px;
+	padding: 0 9px;
+	position: fixed;
+	right: 30px;
+	text-shadow: 1px -1px 0 rgba(0, 0, 0, 0.25);
+	top: 30px;
+}
+
+.unread-comment-dot.fadeOut {
+	animation-duration: 2.5s;
+	-webkit-animation-duration: 2.5s;
+/*	animation-delay: 1s;
+	-webkit-animation-delay: 1s;
+*/}

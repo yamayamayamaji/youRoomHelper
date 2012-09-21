@@ -1,67 +1,102 @@
-/**
- * [C]ontent [S]cripts util function
+/*!
+ * content.js
+ * in youRoomHelper (Google Chrome Extension)
+ * https://github.com/yamayamayamaji/youRoomHelper
+ * Copyright 2012, Ryosuke Yamaji
+ *
+ * License: MIT
  */
-$CS = {
-	getManifest: function(callback){
-		var url = chrome.extension.getURL('/manifest.json');
-		var xhr = new XMLHttpRequest();
-		xhr.onload = function(){
-			callback(JSON.parse(xhr.responseText));
-		};
-		xhr.open('GET',url,true);
-		xhr.send(null);
-	}
-};
 
-STORE_KEY = {
-	MEETING_MODE: 'meeting_mode',
-	PREV_VERSION: 'prev_version',
-	VERSION_CONFIRMED: 'version_confirmed'
-};
+youRoomHelperCS = {
+	/**
+	 * localStorage・sessionStorageに使用しているkey
+	 */
+	storeKey: {
+		MEETING_MODE: 'yrh.meeting_mode'
+	},
 
-youRoomHelper = {
 	/**
 	 * 初期処理
 	 */
 	init: function(){
 		this.retryMgr.init();
 
+		chrome.extension.sendMessage(
+			{
+				require: ['settings'],
+				task: ['showPageAction', 'notifyIfUpgraded']
+			},
+			function(res){
+				var s = res.settings;
+				if (s) { this.settings = s; }
+
+				//ソーシャルガジェットを非表示にする
+				if (s.hideSocialGadget) {
+					this.hideSocialGadgets();
+				}
+				//Shift + Enter で投稿できるようにする
+				if (s.enableShiftEnterPost) {
+					this.enableShiftEnterPost();
+				}
+				//ミーティングモードを使用できるようにする
+				if (s.enableMeetingMode) {
+					this.meetingModeMgr.ready();
+				}
+			}.bind(this)
+ 		);
+	},
+
+	/**
+	 * ソーシャルガジェットを非表示にする
+	 */
+	hideSocialGadgets: function(){
 		//Facebookガジェットを非表示にする
 		$('.social-gadget').remove();
+	},
 
-		//Shift + Enter で投稿できるようにする
-		$('.entry_content').live('keydown', function(e){
+	/**
+	 * Shift + Enter で投稿できるようにする
+	 */
+	enableShiftEnterPost: function(){
+		$('#column1').on('keydown', '.entry_content', function(e){
 			if (e.keyCode == 13 && e.shiftKey) {
 				$(this).closest('form').find('input:submit').get(0).click();
 				e.preventDefault();
 			}
 		});
-
-		//ミーティングモードを使用できるようにする
-		this.meetingModeMgr.init();
-
-		//バージョン更新確認
-		if (sessionStorage[STORE_KEY.VERSION_CONFIRMED] != 'true') {
-			this.versionMgr.init();
-		}
 	},
 
 	/**
-	 * ミーティングモード管理
+	 * ミーティングモードマネージャ
+	 * @type {Object}
 	 */
 	meetingModeMgr: {
 		INTERVAL: 3000,
-		entryQueue: [],
-		lastEntryTimestamp: '',
-		//初期化
-		init: function(){
+		owner: {}, //readyの中でyouRoomHelperCSをセット
+		newCommentQueue: [],
+		lastCommentTimestamp: '',
+		unreadCommentIds: [],
+		readingCommentId: null,
+		readingArea: {
+			topMargin: 5,
+			bottomMargin: 100
+		},
+		READING_CLS: 'now-reading',
+		HAS_READ_CLS: 'has-read',
+		UNREAD_MARK_CLS: 'unread-comment-dot',
+		/**
+		 * ミーティングモードを使用できるようにする為の初期設定
+		 */
+		ready: function(){
 			var matches;
+			this.owner = youRoomHelperCS;
+			this.MEETING_MODE_KEY = this.owner.storeKey.MEETING_MODE;
 
 			//ミーティングモード用移動ボタンを表示
 			//(ホーム画面)
 			if (location.pathname.match(/^\/*$/)) {
-				//ホーム画面では読み込みを待ちながらリトライする
-				youRoomHelper.retryMgr.reg(
+				//ホーム画面ではajaxで内容が読み込まれるのを待ちながらリトライする
+				this.owner.retryMgr.reg(
 					function(){ return $('.entry-container').length; },
 					this.addMeetingBtn, this);
 			} else {
@@ -69,7 +104,8 @@ youRoomHelper = {
 			}
 
 			//ミーティングモード起動条件が揃っていればミーティングを起動
-			if (sessionStorage[STORE_KEY.MEETING_MODE] == 'on' &&
+			//(リロードしてもミーティングモードを継続する為)
+			if (sessionStorage[this.MEETING_MODE_KEY] == 'on' &&
 					(matches = location.pathname.match(/r\/([^\/]+)\/entries\/([^\/]+)/))) {
 				this.roomId = matches[1];
 				this.entryId = matches[2];
@@ -79,9 +115,12 @@ youRoomHelper = {
 			}
 		},
 
-		//ミーティングモード用移動ボタンを追加
+		/**
+		 * ミーティングモード用移動ボタンを追加
+		 */
 		addMeetingBtn: function(){
 			var imgUrl = chrome.extension.getURL('/images/meeting.png');
+			var storeKey = this.MEETING_MODE_KEY;
 			$('.entry-container').each(function(){
 				var $this = $(this), c;
 				var entryRoom = $this.find('[name=parma_url]').val();
@@ -90,148 +129,345 @@ youRoomHelper = {
 				var $a = $ul.find('a')
 						.css({backgroundImage: 'url(' + imgUrl + ')'})
 						.click(function(){
-							sessionStorage[STORE_KEY.MEETING_MODE] = 'on';
+							sessionStorage[storeKey] = 'on';
 						});
 				$this.find('.action-wrapper').prepend($ul);
 			});
 		},
 
-		//ミーティングモード起動
+		/**
+		 * ミーティングモード起動(ミーティングモード初期処理)
+		 */
 		boot: function(){
-			//cssクラス追加
-			var ss = $('<style type="text/css">').appendTo('head').get(0).sheet;
-			ss.insertRule('@-webkit-keyframes fadeOut {0% {opacity: 1;} 100% {opacity: 0;}}', 0);
-			ss.insertRule('.fadeOut {-webkit-animation-name: fadeOut; -webkit-animation-fill-mode: both; -webkit-animation-duration: 3s; -webkit-animation-delay: 30s;}', 1);
+			var self = this;
+			//cssルール追加
+			$('<link rel="stylesheet" type="text/css">')
+				.attr('href', chrome.extension.getURL('meeting.css'))
+				.insertAfter('link:last');
 
-			this.getNewEntries();
+			//pageActionアイコンを変更
+			chrome.extension.sendMessage(
+				{task: [{key: 'changePageAction', type: 'meeting'}]}, $.noop);
+
+			//windowにイベントリスナを登録
+			//(windowに触ったら(scroll,mousedown,keyup)未読コメント表示状態をチェック)
+			$(window).on('scroll mousedown keyup', function(){
+console.log('タッチ' + arguments[0].type);
+				self.manageUnreadComments();
+			});
+
+			//新着コメント一覧取得
+			this.getNewComments();
 		},
 
-		//ミーティングモード終了
+		/**
+		 * ミーティングモード終了
+		 */
 		end: function(){
+			$(window).off('touch');
 			if (this.timer) { clearTimeout(this.timer); }
-			sessionStorage.removeItem[STORE_KEY.MEETING_MODE];
+			sessionStorage.removeItem(this.MEETING_MODE_KEY);
+			//pageActionアイコンを変更
+			chrome.extension.sendMessage(
+				{task: [{key: 'changePageAction', type: 'def'}]}, $.noop);
 		},
 
-		//新規エントリーを取得
-		getNewEntries: function(){
+		/**
+		 * 新着コメント一覧情報を取得
+		 * (ミーティングモード中、一定間隔で繰り返す)
+		 */
+		getNewComments: function(){
 			$.getJSON('/r/' + this.roomId,
 				{
-					since: this.lastEntryTimestamp,
+					since: this.lastCommentTimestamp,
 					read_state:'',
 					flat: 'true'
 				},
-				$.proxy(this.handleNewEntries, this)
+				this.handleNewComments.bind(this)
 			);
-			this.timer = setTimeout($.proxy(this.getNewEntries, this), this.INTERVAL);
+			this.timer = setTimeout(this.getNewComments.bind(this), this.INTERVAL);
 		},
 
-		//新規エントリー取得コールバック
-		handleNewEntries: function(newEntries){
-			var i, entry, entryObj;
-			for (i=0; entryObj=newEntries[i++];) {
-				entry = entryObj.entry;
-				//取得したエントリーの中で最終のもののタイムスタンプを記憶
-				if (entry.updated_at > this.lastEntryTimestamp) {
-					this.lastEntryTimestamp = entry.updated_at;
+		/**
+		 * 新着コメント一覧情報取得コールバック
+		 * @param  {array of EntryObj(youRoomAPIのレスポンス)} newEntries 新着コメント一覧情報
+		 */
+		handleNewComments: function(newEntries){
+			var i, comment, entryObj, url;
+			for (i = 0; entryObj = newEntries[i++];) {
+				comment = entryObj.entry;
+				//取得したコメントの中で最終のもののタイムスタンプを記録
+				if (comment.updated_at > this.lastCommentTimestamp) {
+					this.lastCommentTimestamp = comment.updated_at;
 				}
-				//既に表示されているエントリーまたは別ルームのエントリーはスルー
-				if ($('#entry_' + entry.id).length || entry.root_id != this.entryId) {
+				//既に表示されているコメントまたは別ルームのコメントはスルー
+				if ($('#entry_' + comment.id).length || comment.root_id != this.entryId) {
 					continue;
 				} else {
-					this.entryQueue.push(entry);
+					this.newCommentQueue.push(comment);
 				}
 			}
-			//表示対象となるエントリーがあれば表示する
-			if (this.entryQueue) {
-				//古い順に並び替え
-				this.entryQueue.sort(function(e1, e2){
+			//表示対象となる新着コメントがあれば内容を読み込んで表示する
+			if (this.newCommentQueue.length) {
+				//表示対象コメントキューを古い順に並び替え
+				this.newCommentQueue.sort(function(e1, e2){
 					var p = e1.updated_at,
 						q = e2.updated_at;
 					return (p > q) ? 1 : (p == q) ? 0 : -1;
 				});
-				this.showEntries();
+
+				//現在のルーム・エントリーのhtmlを取得
+				var url = '/r/' + this.roomId + '/entries/' + this.entryId + '/';
+				$.when($.ajax({url: url, dataType: 'html'}))
+					.then(this.coordinateComments.bind(this));
 			}
 		},
 
-		//エントリーを表示
-		showEntries: function(){
-			if (!this.entryQueue.length) { return; }
-			//現在のルーム・エントリーのhtmlを取得
-			$.get('/r/' + this.roomId + '/entries/' + this.entryId + '/',
-				$.proxy(function(res){
-					var entry;
-					res = res.replace(/<(script|style|title)[^<]+<\/(script|style|title)>/gm,'').replace(/<(link|meta)[^>]+>/g,'');
-					this.$entryDom = $(res)/*.find('#contents-container')*/.find('#column1');
-					while (entry = this.entryQueue[0]) {
-						if (this.$entryDom.find('#entry_' + entry.id).length) {
-							this.entryQueue.shift();
-							this.showEntry(entry);
-						}
-						this.markAsUnread(entry);
+		/**
+		 * コメントを剪定して表示する
+		 * (ajaxで読み込んだ最新のエントリーツリーから新着コメントを切り貼りする)
+		 * @param  {string} currentEntryHtml ミーティング中エントリースレッドの現在のHTML文字列
+		 */
+		coordinateComments: function(currentEntryHtml){
+			if (!this.newCommentQueue.length) { return; }
+			var i, $entryDom, comment, commentId;
+			//不要部分を大まかに剪定
+			currentEntryHtml = currentEntryHtml
+					.replace(/<(script|style|title)[^<]+<\/(script|style|title)>/gm,'')
+					.replace(/<(link|meta)[^>]+>/g,'');
+			//エントリーツリー部分だけのDocumentFragmentを作成
+			$entryDom = $(currentEntryHtml).find('#column1');
+			for (i = 0; comment = this.newCommentQueue[i++];) {
+				commentId = 'entry_' + comment.id;
+				if ($entryDom.find('#' + commentId).length) {
+					//コメントを描画
+					if (this.renderComment(commentId, $entryDom)) {
+						//新規コメントキューから消す
+						this.newCommentQueue.shift();
+						//未読コメントキューに追加
+						this.unreadCommentIds.push(commentId);
+						//新着コメント有りの通知エフェクト
+						this.notifyNewCommentExist(commentId);
 					}
-				}, this),
-				'html'
-			);
-		},
-
-		//エントリーを表示(1件毎)
-		showEntry: function(entry){
-			var containerSelector = '.comment-container';
-			var $newContainer = this.$entryDom.find('#entry_' + entry.id).closest(containerSelector);
-			var $oldContainer = $('#' + $newContainer.find('.comment-wrapper-lv1[id^=entry]').attr('id')).closest(containerSelector);
-			$oldContainer.remove();
-			$newContainer.hide().insertBefore($(containerSelector + ':last')).fadeIn(2500);
-		},
-
-		//エントリーに未読マークを表示
-		markAsUnread: function(entry){
-			var c = $('#entry_' + entry.id).find('.comment-parag .clearfix');
-			$('<span class="unread-comment-dot">').addClass('fadeOut').prependTo(c);
-		},
-	},
-
-	/**
-	 * バージョン管理
-	 */
-	versionMgr: {
-		//初期化
-		init: function(){
-			this.prevVer = localStorage[STORE_KEY.PREV_VERSION];
-			$CS.getManifest($.proxy(function(manifest){
-				this.curVer = manifest.version;
-				if (this.isUpdated()) {
-					this.notifyUpdate();
-					this.updatePrevVersion();
 				}
-			}, this));
-			sessionStorage[STORE_KEY.VERSION_CONFIRMED] = 'true';
+			}
+			$entryDom = null;
 		},
-		//アップデートされているか
-		isUpdated: function(){
-			return (!this.prevVer || (this.prevVer != this.curVer));
+
+		/**
+		 * コメントを描画(1件毎)
+		 * @param  {string} commentId コメントID
+		 * @param  {DocumentFragment} newContentsDom 新規コメントを含むDocumentFragment
+		 * @return {boolean} 描画したかどうか
+		 */
+		renderComment: function(commentId, newContentsDom){
+			const CONTAINER_SELECTOR = '.comment-container';
+			var $newContainer = $(newContentsDom).find('#' + commentId)
+									.closest(CONTAINER_SELECTOR),
+				wrapperId = $newContainer.find('.comment-wrapper-lv1[id^=entry]')
+									.attr('id'),
+				$oldContainer = $('#' + wrapperId).closest(CONTAINER_SELECTOR),
+				unreadComments = [], $focused;
+			//描画しようとしているコメントコンテナが既に表示されているコメントコンテナ
+			//(=新規コメントが既存コメントに対するコメント)の場合、
+			//既に表示されているコメントコンテナを削除する
+			if ($oldContainer.length) {
+				//削除しようとしているコメントコンテナ配下にコメントを入力中
+				//またはコメントリーディング中の場合は描画処理を延期
+				$focused = $(document.activeElement).filter(':focus');
+				if ($focused.length &&
+						$focused.closest(CONTAINER_SELECTOR).get(0) === $oldContainer.get(0) ||
+						$oldContainer.find('.' + this.READING_CLS).length) {
+					return false;
+				}
+				//削除しようとしているコメントコンテナ配下に未読マークがあれば記憶しておき
+				//描画しなおしたコメントにマーキングし直す
+				$oldContainer.find('.' + this.UNREAD_MARK_CLS).each(function(){
+					unreadComments.push($(this).closest('.comment-wrapper').attr('id'));
+				});
+
+				$oldContainer.remove();
+			}
+			//コメント描画
+			$newContainer.hide()
+				.insertBefore($(CONTAINER_SELECTOR + ':last')).fadeIn(2500);
+			//未読マーク継承
+			if (unreadComments.length) {
+				this.markAsUnread(unreadComments);
+			}
+
+			return true;
 		},
-		//以前のバージョンとして記録している情報を更新
-		updatePrevVersion: function(){
-			localStorage[STORE_KEY.PREV_VERSION] = this.curVer;
+
+		/**
+		 * 新着コメントがあることを通知
+		 * @param  {string} commentId コメントID
+		 */
+		notifyNewCommentExist: function(commentId){
+console.log('未読#' + commentId);
+			//当該コメントに未読マークを付加
+			this.markAsUnread(commentId);
+			//未読件数バッジを更新
+			this.updateUnreadBadge();
 		},
-		//更新されたのを通知
-		notifyUpdate: function(){
-			var txt = 'youRoomHelper was upgraded to ' + this.curVer + ' (from ' + this.prevVer + ')... ';
-			var path = chrome.extension.getURL('/release_notes.html');
-			var anc = $('<a href="#" onclick="window.open(\'' + path + '\')">show details</a>').addClass('sc_ttl_sat');
-			$('<div>').text(txt).append(anc)
-			.css({
-				fontSize: '12px',
-				margin: '5px 0 5px 0',
-				minHeight: '40px',
-				padding: '10px',
-				textAlign: 'left'
-			}).appendTo($('#column3') || $(document.body || document.frames[0]));
+
+		/**
+		 * コメントに未読マークを表示
+		 * @param  {string|array} commentId コメントID
+		 */
+		markAsUnread: function(commentId){
+			if (!$.isArray(commentId)) { commentId = [commentId]; }
+			for (var i = 0, cid; cid = commentId[i++];) {
+console.log('未読マーク：'+cid);
+				var $container = $('#' + cid).find('.comment-parag .clearfix').first();
+				$('<span class="' + this.UNREAD_MARK_CLS + '">').prependTo($container);
+			}
+		},
+
+		/**
+		 * 未読件数バッジを更新
+		 */
+		updateUnreadBadge: function(){
+			if (!this.unreadBadge) {
+				this.unreadBadge = $('<span id="yrhUnreadBadge" class="unreadBadge">')
+									.text('0').appendTo('body');
+ 			}
+			const EFE_INCREASE = 'bounceIn',
+					EFE_DECREASE = 'bounceOut',
+					EFFECTS = EFE_INCREASE + ' ' + EFE_DECREASE;
+			var badge = this.unreadBadge,
+				bef = badge.text(),
+				aft = this.unreadCommentIds.length,
+				effect;
+			//未読件数が増えた時
+			if (aft > bef) {
+				badge.text(aft)
+					.removeClass(EFFECTS).addClass(EFE_INCREASE)
+					.one('webkitAnimationEnd', function(){
+						$(this).removeClass(EFE_INCREASE);
+					});
+			//未読件数が減った時
+			} else {
+				badge.removeClass(EFFECTS).addClass(EFE_DECREASE)
+					.one('webkitAnimationEnd', function(){
+						badge.text(aft ? aft : '');
+						$(this).removeClass(EFE_DECREASE);
+					});
+			}
+ 		},
+
+		/**
+		　*　コメントが読める状態かどうか
+		　*　(コメントが一定範囲内に入っているか)
+		 * @param  {string} commentId コメントID
+		 * @return {boolean} コメントが読める状態かどうか
+		 */
+		isCommentReadable: function(commentId){
+			var commentElm = $('#' + commentId).get(0),
+				rect = commentElm.getBoundingClientRect(),
+				areaTop = this.readingArea.topMargin,
+				areaBottom = $(window).height() - this.readingArea.bottomMargin;
+			//コメント要素のトップかボトムがリーディングエリア内にあればOK
+			return (rect.top > areaTop && rect.top < areaBottom ||
+					rect.bottom > areaTop && rect.bottom < areaBottom);
+		},
+
+		/**
+		 * 未読コメントの管理
+		 */
+		manageUnreadComments: function(){
+console.log('未読チェック');
+			//あるコメントを読んでいる間は何もしない
+			if (this.readingCommentId) { return; }
+			var commentIds = this.unreadCommentIds,
+				i, cid, $c, rect;
+			for (i = 0; cid = commentIds[i++];) {
+				$c = $('#' + cid);
+				//コメントがリーディング中・読了後でなく、画面の一定範囲内に入っていれば
+				//読み始め処理開始
+				if (!$c.hasClass(this.READING_CLS) &&
+						!$c.hasClass(this.HAS_READ_CLS) &&
+						this.isCommentReadable(cid)) {
+					this.startReading(cid);
+					break;
+				}
+			}
+		},
+
+		/**
+		 * コメント読み始め
+		 * @param  {string} commentId コメントID
+		 */
+		startReading: function(commentId){
+console.log('開始');
+			var $comment = $('#' + commentId),
+				commentLen = $comment.find('.content').text().length;
+			//リーディング中マーキング
+			$comment.addClass(this.READING_CLS);
+			this.readingCommentId = commentId;
+			//9文字/秒として読了までの時間を設定(ただし最短2秒とする)
+			this.countDownReadTime(commentId, Math.max(Math.ceil(commentLen / 12), 2));
+		},
+
+		/**
+		 * コメントリーディング時間カウントダウン
+		 * @param  {string}  commentId コメントID
+		 * @param  {integer} remain    残り秒数
+		 */
+		countDownReadTime: function(commentId, remain){
+console.log(commentId+'#'+remain);
+			//読了
+			if (remain <= 0) {
+				this.finishReading(commentId);
+			//リーディング中
+			} else if (this.isCommentReadable(commentId)) {
+console.log('読み掛け');
+				setTimeout(this.countDownReadTime.bind(this, commentId, --remain), 1000);
+			//リーディング破棄
+			} else {
+				this.abortReading(commentId);
+			}
+		},
+
+		/**
+		 * コメントリーディング中断
+		 * @param  {string}  commentId コメントID
+		 */
+		abortReading: function(commentId){
+console.log('中断');
+			$('#' + commentId).removeClass(this.READING_CLS);
+			this.readingCommentId = null;
+		},
+
+		/**
+		 * コメント読了
+		 * @param  {string}  commentId コメントID
+		 */
+		finishReading: function(commentId){
+console.log('読了');
+			//リーディング中・読了cssクラスの付替と未読マークの削除
+			$('#' + commentId).removeClass(this.READING_CLS)
+				.addClass(this.HAS_READ_CLS)
+				.find('.' + this.UNREAD_MARK_CLS).first()
+				.addClass('fadeOut')
+				.one('webkitAnimationEnd', function(){
+					$(this).remove();
+				});
+			//未読コメントキューから削除
+			for (var i = 0, cid; cid = this.unreadCommentIds[i++];) {
+				if (cid == commentId) {
+					this.unreadCommentIds.splice(i - 1, 1);
+				}
+			}
+			this.readingCommentId = null;
+			//未読件数バッジを更新
+			this.updateUnreadBadge();
 		}
 	},
 
 	/**
-	 * リトライ管理
+	 * リトライマネージャ
+	 * @type {Object}
 	 */
 	retryMgr: {
 		//初期化
@@ -264,9 +500,9 @@ youRoomHelper = {
 			} else {
 				if (this.unreachedToMax(key)) {
 					this.countUp(key);
-					setTimeout($.proxy(function(){
+					setTimeout(function(){
 						return this.retry(key, condition, fnc, context);
-					}, this), 300);
+					}.bind(this), 300);
 				}
 				return;
 			}
@@ -274,4 +510,4 @@ youRoomHelper = {
 	}
 };
 
-$(function(){youRoomHelper.init()});
+$(function(){youRoomHelperCS.init()});

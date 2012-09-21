@@ -14,5 +14,8 @@ youRoom (https://www.youroom.in/ )のヘルパー chrome extension です。
   
 #### 使用方法：  
   
-1. http://goo.gl/roySH からインストールしてください。  
+1. http://goo.gl/roySH からyouRoomHelper.crx をダウンロード  
+  
+2. chromeで拡張機能ページ( chrome://chrome/extensions/ )を開き  
+youRoomHelper.crx をドラッグ&ドロップしてインストール  
   
