@@ -49,7 +49,5 @@
     "notifications"
   ],
 
-  "update_url": "https://github.com/yamayamayamaji/youRoomHelper/blob/master/updates.xml",
-
   "web_accessible_resources": ["images/meeting.png", "meeting.css"]
 }
