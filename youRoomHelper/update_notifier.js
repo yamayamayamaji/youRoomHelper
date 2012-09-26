@@ -4,8 +4,9 @@ var updateNotifier = {
 	 * 通知内容を設定する
 	 */
 	init: function(){
-		var extInfo = chrome.app.getDetails();
-		var iconPath, icons;
+		var extInfo = chrome.app.getDetails(),
+			prevVersion = location.search.replace(/[?&]prev=([^&]*)/, '$1'),
+			iconPath, icons;
 
 		//icon設定
 		icons = extInfo.icons;
@@ -15,7 +16,7 @@ var updateNotifier = {
 		//本文設定
 		var h = '<strong>' + extInfo.name + '</strong> was upgraded<br>'
 				+ ' to <em>' + extInfo.version + '</em>'
-				+ ' (from ' + localStorage['prev_version'] + ')... '
+				+ ' (from ' + prevVersion + ')... '
 				+ '<a id="refNote" href="#">show details</a>';
 		$('#description').html(h);
 		$('#refNote').click(this.showNote);

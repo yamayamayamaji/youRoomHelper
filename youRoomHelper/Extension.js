@@ -18,6 +18,9 @@ var Extension = function(){
  */
 Extension.prototype = {
 	constructor: Extension,
+	/**
+	 * @const
+	 */
 	STORE_KEY: {
 		PREV_VERSION: 'prev_version'
 	},
@@ -207,18 +210,14 @@ Extension.prototype = {
 	versionMgr: {
 		//初期化
 		init: function(){
-			var ext = Extension.prototype;
-			this.prevVer = localStorage[ext.STORE_KEY.PREV_VERSION];
+			var ext = Extension.prototype,
+				prevVer = ext.STORE_KEY.PREV_VERSION;
+			this.prevVer = localStorage[prevVer];
 			this.curVer = ext.getDetails().version;
 		},
 		//エクステンションが更新されているか
 		isUpdated: function(){
-			if (!this.prevVer || (this.prevVer != this.curVer)) {
-				this.updatePrevVersion();
-				return true;
-			} else {
-				return false;
-			}
+			return !this.prevVer || (this.prevVer != this.curVer);
 		},
 		//以前のバージョンとして記録している情報を更新
 		updatePrevVersion: function(){
@@ -229,9 +228,17 @@ Extension.prototype = {
 			if (this.isUpdated()) {
 				var id = Extension.prototype.getDetails('id');
 				var n = webkitNotifications.createHTMLNotification(
-				  'update_notifier.html'
-				).show();
-				this.init();
+					'update_notifier.html?prev=' + this.prevVer
+				);
+				//表示したら保持しているバージョン情報を更新
+				n.ondisplay = function(){
+					this.updatePrevVersion();
+					this.init();
+				}.bind(this);
+				//表示
+				n.show();
+				//自動的に閉じる
+				setTimeout(function(){ n.cancel(); }, 7000);
 			}
 		}
 	}

@@ -101,6 +101,6 @@
 .unread-comment-dot.fadeOut {
 	animation-duration: 2.5s;
 	-webkit-animation-duration: 2.5s;
-/*	animation-delay: 1s;
+	animation-delay: 1s;
 	-webkit-animation-delay: 1s;
-*/}
+}

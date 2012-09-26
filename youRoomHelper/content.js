@@ -152,7 +152,6 @@ youRoomHelperCS = {
 			//windowにイベントリスナを登録
 			//(windowに触ったら(scroll,mousedown,keyup)未読コメント表示状態をチェック)
 			$(window).on('scroll mousedown keyup', function(){
-console.log('タッチ' + arguments[0].type);
 				self.manageUnreadComments();
 			});
 
@@ -304,7 +303,6 @@ console.log('タッチ' + arguments[0].type);
 		 * @param  {string} commentId コメントID
 		 */
 		notifyNewCommentExist: function(commentId){
-console.log('未読#' + commentId);
 			//当該コメントに未読マークを付加
 			this.markAsUnread(commentId);
 			//未読件数バッジを更新
@@ -318,7 +316,6 @@ console.log('未読#' + commentId);
 		markAsUnread: function(commentId){
 			if (!$.isArray(commentId)) { commentId = [commentId]; }
 			for (var i = 0, cid; cid = commentId[i++];) {
-console.log('未読マーク：'+cid);
 				var $container = $('#' + cid).find('.comment-parag .clearfix').first();
 				$('<span class="' + this.UNREAD_MARK_CLS + '">').prependTo($container);
 			}
@@ -376,7 +373,6 @@ console.log('未読マーク：'+cid);
 		 * 未読コメントの管理
 		 */
 		manageUnreadComments: function(){
-console.log('未読チェック');
 			//あるコメントを読んでいる間は何もしない
 			if (this.readingCommentId) { return; }
 			var commentIds = this.unreadCommentIds,
@@ -399,7 +395,6 @@ console.log('未読チェック');
 		 * @param  {string} commentId コメントID
 		 */
 		startReading: function(commentId){
-console.log('開始');
 			var $comment = $('#' + commentId),
 				commentLen = $comment.find('.content').text().length;
 			//リーディング中マーキング
@@ -415,13 +410,11 @@ console.log('開始');
 		 * @param  {integer} remain    残り秒数
 		 */
 		countDownReadTime: function(commentId, remain){
-console.log(commentId+'#'+remain);
 			//読了
 			if (remain <= 0) {
 				this.finishReading(commentId);
 			//リーディング中
 			} else if (this.isCommentReadable(commentId)) {
-console.log('読み掛け');
 				setTimeout(this.countDownReadTime.bind(this, commentId, --remain), 1000);
 			//リーディング破棄
 			} else {
@@ -434,7 +427,6 @@ console.log('読み掛け');
 		 * @param  {string}  commentId コメントID
 		 */
 		abortReading: function(commentId){
-console.log('中断');
 			$('#' + commentId).removeClass(this.READING_CLS);
 			this.readingCommentId = null;
 		},
@@ -444,7 +436,6 @@ console.log('中断');
 		 * @param  {string}  commentId コメントID
 		 */
 		finishReading: function(commentId){
-console.log('読了');
 			//リーディング中・読了cssクラスの付替と未読マークの削除
 			$('#' + commentId).removeClass(this.READING_CLS)
 				.addClass(this.HAS_READ_CLS)

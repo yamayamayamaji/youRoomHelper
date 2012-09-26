@@ -19,12 +19,7 @@ youRoomHelper = _.extend(new Extension({
 	 * 初期化
 	 */
 	init: function(){
-		this.STORE_KEY = _.extend(this.STORE_KEY || {}, {
-			AAA: 'aaa',
-			BBB: 'bbb'
-		});
-
-		//設定されてない項目があればデフォルト値を設定
+		//オプションで設定されてない項目があればデフォルト値を設定
 		_.each(this.defaultSettings, function(val, key){
 			var key = 'store.settings.' + key;
 			if (!localStorage[key]) {
