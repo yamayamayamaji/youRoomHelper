@@ -58,9 +58,9 @@ youRoomHelperCS = {
 	 * Shift + Enter で投稿できるようにする
 	 */
 	enableShiftEnterPost: function(){
-		$('#column1').on('keydown', '.entry_content', function(e){
+		$('#column1, #cluetip').on('keydown', '.entry_content', function(e){
 			if (e.keyCode == 13 && e.shiftKey) {
-				$(this).closest('form').find('input:submit').get(0).click();
+				$(this).closest('form').find('input.count_submit').get(0).click();
 				e.preventDefault();
 			}
 		});
@@ -81,6 +81,7 @@ youRoomHelperCS = {
 			topMargin: 5,
 			bottomMargin: 100
 		},
+		HAS_MEETINGBTN_CLS: 'has-meetingbtn',
 		READING_CLS: 'now-reading',
 		HAS_READ_CLS: 'has-read',
 		UNREAD_MARK_CLS: 'unread-comment-dot',
@@ -100,7 +101,11 @@ youRoomHelperCS = {
 					function(){ return $('.entry-container').length; },
 					this.addMeetingBtn, this);
 			} else {
-				this.addMeetingBtn();
+				// this.addMeetingBtn();
+				var self = this;
+				$('#entries-container').on('mouseenter',
+					'.entry-container:not(.has-meetingbtn)',
+					function(){ self.addMeetingBtn(this); });
 			}
 
 			//ミーティングモード起動条件が揃っていればミーティングを起動
@@ -118,20 +123,22 @@ youRoomHelperCS = {
 		/**
 		 * ミーティングモード用移動ボタンを追加
 		 */
-		addMeetingBtn: function(){
-			var imgUrl = chrome.extension.getURL('/images/meeting.png');
-			var storeKey = this.MEETING_MODE_KEY;
-			$('.entry-container').each(function(){
-				var $this = $(this), c;
-				var entryRoom = $this.find('[name=parma_url]').val();
-				var $ul = $('<ul class="topic-edit-actions"><li><p class="btn-edit">' +
-							'<a href="' + entryRoom + '"><span>ミーティング</span></a>');
-				var $a = $ul.find('a')
+		addMeetingBtn: function(container){
+			var imgUrl = chrome.extension.getURL('/images/meeting.png'),
+				storeKey = this.MEETING_MODE_KEY,
+				$ctn = container ? $(container) : $('.entry-container');
+			$ctn.each(function(){
+				var $this = $(this),
+					entryRoom = $this.find('[name=parma_url]').val(),
+					$ul = $('<ul class="topic-edit-actions"><li><p class="btn-edit">' +
+							'<a href="' + entryRoom + '"><span>ミーティング</span></a>'),
+					$a = $ul.find('a')
 						.css({backgroundImage: 'url(' + imgUrl + ')'})
 						.click(function(){
 							sessionStorage[storeKey] = 'on';
 						});
-				$this.find('.action-wrapper').prepend($ul);
+				$this.addClass('has-meetingbtn')
+					.find('.action-wrapper').prepend($ul);
 			});
 		},
 
