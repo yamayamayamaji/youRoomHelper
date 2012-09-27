@@ -14,5 +14,5 @@ youRoom (https://www.youroom.in/ )のヘルパー chrome extension です。
   
 #### 使用方法：  
   
-1. goo.gl/eNFlP からインストールしてください  
+1. http://goo.gl/eNFlP からインストールしてください  
   
