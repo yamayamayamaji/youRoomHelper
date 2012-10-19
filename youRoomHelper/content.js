@@ -6,8 +6,8 @@
  *
  * License: MIT
  */
-
-youRoomHelperCS = {
+"use strict";
+var youRoomHelperCS = {
 	/**
 	 * localStorage・sessionStorageに使用しているkey
 	 */
@@ -42,6 +42,10 @@ youRoomHelperCS = {
 				if (s.enableMeetingMode) {
 					this.meetingModeMgr.ready();
 				}
+				//トピックurlをワンクリックでコピーできるようにする
+				// if (s.enableTopicUrlOneClickCopy) {
+					this.topicUrlOneClickCopy.enable();
+				// }
 			}.bind(this)
  		);
 	},
@@ -64,6 +68,14 @@ youRoomHelperCS = {
 				e.preventDefault();
 			}
 		});
+	},
+
+	/**
+	 * ホーム画面にいるかどうか
+	 * @return {boolean} ホーム画面にいるかどうか
+	 */
+	inHome: function(){
+		return location.pathname.match(/^\/*$/);
 	},
 
 	/**
@@ -95,13 +107,12 @@ youRoomHelperCS = {
 
 			//ミーティングモード用移動ボタンを表示
 			//(ホーム画面)
-			if (location.pathname.match(/^\/*$/)) {
+			if (this.owner.inHome) {
 				//ホーム画面ではajaxで内容が読み込まれるのを待ちながらリトライする
 				this.owner.retryMgr.reg(
 					function(){ return $('.entry-container').length; },
 					this.addMeetingBtn, this);
 			} else {
-				// this.addMeetingBtn();
 				var self = this;
 				$('#entries-container').on('mouseenter',
 					'.entry-container:not(.has-meetingbtn)',
@@ -267,7 +278,7 @@ youRoomHelperCS = {
 		 * @return {boolean} 描画したかどうか
 		 */
 		renderComment: function(commentId, newContentsDom){
-			const CONTAINER_SELECTOR = '.comment-container';
+			var CONTAINER_SELECTOR = '.comment-container';
 			var $newContainer = $(newContentsDom).find('#' + commentId)
 									.closest(CONTAINER_SELECTOR),
 				wrapperId = $newContainer.find('.comment-wrapper-lv1[id^=entry]')
@@ -336,9 +347,9 @@ youRoomHelperCS = {
 				this.unreadBadge = $('<span id="yrhUnreadBadge" class="unreadBadge">')
 									.text('0').appendTo('body');
  			}
-			const EFE_INCREASE = 'bounceIn',
-					EFE_DECREASE = 'bounceOut',
-					EFFECTS = EFE_INCREASE + ' ' + EFE_DECREASE;
+			var EFE_INCREASE = 'bounceIn',
+				EFE_DECREASE = 'bounceOut',
+				EFFECTS = EFE_INCREASE + ' ' + EFE_DECREASE;
 			var badge = this.unreadBadge,
 				bef = badge.text(),
 				aft = this.unreadCommentIds.length,
@@ -460,6 +471,79 @@ youRoomHelperCS = {
 			this.readingCommentId = null;
 			//未読件数バッジを更新
 			this.updateUnreadBadge();
+		}
+	},
+
+	/**
+	 * トピックurlワンクリックコピーマネージャ
+	 * @type {Object}
+	 */
+	topicUrlOneClickCopy: {
+		scopeSelector: '.topic_top_action',
+		commentShowBtnSelector: '.comments-number-area',
+		//ワンクリックコピー有効化
+		enable: function(){
+			var owner = youRoomHelperCS;
+			//#コメント表示ボタン=$(.comments-number-area)
+			//コメント表示ボタンにclickイベントリスナを追加したいが
+			//コメント表示ボタンのclickイベントは既存リスナ内でバブリングが止められているので
+			//bindで追加する必要がある。
+			//そうすると動的に作られた新たなコメント表示ボタンには追加リスナは設定されない。
+			//なのでon(=delegate)でmouseupイベントにリスナを登録しておき、その中で
+			//clickイベントのリスナをbindする。
+
+			//さらにホーム画面ではコンテンツの読み込みを待つ必要があるので
+			//documentにトリガーを仕込んでおく
+			if (owner.inHome) {
+				$(document.body).one('mousedown.yrh',
+					this.commentShowBtnSelector,
+					this.prepareForAddListener.bind(this));
+			} else {
+				this.prepareForAddListener();
+			}
+		},
+		//コメント表示ボタンにイベントリスナを登録する準備をする
+		prepareForAddListener: function(){
+			$('#column1').find(this.scopeSelector).one('mouseup.yrh',
+				this.commentShowBtnSelector,
+				this.addListenerToCommentNumBtn.bind(this));
+		},
+		//コメント表示ボタンにイベントリスナを登録する
+		addListenerToCommentNumBtn: function(event){
+			var $btn = $(event.currentTarget);
+			$btn.bind('click.yrh', this.handleCommentNumClick.bind(this));
+		},
+		//コメント表示ボタンのクリックハンドラ
+		handleCommentNumClick: function(event){
+			var $btn = $(event.currentTarget);
+			if($btn.hasClass('cluetip-clicked')){
+				this.placeCopyToClipboardBtn();
+			}
+		},
+		//cluetipにトピックurlコピーボタンを設置する
+		placeCopyToClipboardBtn: function(){
+			var imgUrl = chrome.extension.getURL('/images/clipboard.png'),
+				copybtnHtml = '<image src="' + imgUrl + '" class="copybtn" title="copy to clipboard" style="height:16px;margin-left:-8px;position:relative;top:-2px;width:16px;">',
+				$urlBox = $('#cluetip').find('.click-select'),
+				url = $urlBox.val(),
+				$btn = $(copybtnHtml).bind({
+					click: function(){
+						//クリップボードにコピー
+						chrome.extension.sendMessage(
+							{task: {key: 'copyToClipBoard', str: url}},
+							function(res){
+						});
+					},
+					mouseenter: function(){ $(this).prev().get(0).select(); },
+					mouseleave: function(){ $(this).prev().get(0).blur(); }
+				});
+ 			$urlBox.width($urlBox.width() - 10).after($btn);
+		},
+		//ワンクリックコピー無効化
+		disable: function(){
+			$('#cluetip').find('.copybtn').remove();
+			$('#column1').find(this.scopeSelector).off('.yrh');
+			$(this.commentShowBtnSelector).off('.yrh');
 		}
 	},
 

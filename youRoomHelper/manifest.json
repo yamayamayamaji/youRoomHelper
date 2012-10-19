@@ -1,7 +1,7 @@
 {
   "name": "youRoomHelper",
 
-  "version": "1.0.0.1",
+  "version": "1.0.1.0",
 
   "description": "youRoom helper for more comfortable use",
 
@@ -49,5 +49,8 @@
     "notifications"
   ],
 
-  "web_accessible_resources": ["images/meeting.png", "meeting.css"]
+  "web_accessible_resources": [
+    "images/meeting.png", "meeting.css",
+    "images/clipboard.png"
+  ]
 }

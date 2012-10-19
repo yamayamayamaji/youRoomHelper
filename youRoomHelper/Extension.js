@@ -37,7 +37,7 @@ Extension.prototype = {
 
 		_.extend(this, options);
 
-		//_get・_executeとoptionsのget・executeとのmixin作成
+		//_get,_executeとoptionsのget,executeとのmixin作成
 		_.each(['get', 'execute'], function(name, idx){
 			this[name] = _.extend({}, this['_' + name], options[name]);
 		}, this);
@@ -79,6 +79,9 @@ Extension.prototype = {
 		},
 		notifyIfUpgraded: function(){
 			this.versionMgr.notifyIfUpgraded();
+		},
+		copyToClipBoard: function(opt,a,b){
+			this.copyToClipBoard(opt.str);
 		}
 	},
 
@@ -143,7 +146,7 @@ Extension.prototype = {
 					args = null;
 				}
 
-				//レシーバがasync処理を含むことも想定し、Deferred/Promiseで実行する
+				//レシーバがasync処理を含むことを想定し、Deferred/Promiseで実行する
 				deferreds.push(deferredMaker(this,
 					(idx == 0 ? 'execute' : 'get'), name, args));
 			}
@@ -241,6 +244,22 @@ Extension.prototype = {
 				setTimeout(function(){ n.cancel(); }, 7000);
 			}
 		}
+	},
+
+	/**
+	 * クリップボードにコピーする
+	 * @param  {string} str コピーする文字列
+	 */
+	copyToClipBoard: function(str){
+		var _org = document.oncopy ? document.oncopy.bind(null) : null;
+		document.oncopy = function(event) {
+			var mimetype = 'text';
+			event.clipboardData.setData(mimetype, str);
+			if (_.isFunction(_org)) {_org(event);}
+			event.preventDefault();
+		};
+		document.execCommand("Copy", false, null);
+		document.oncopy = _org;
 	}
 };
 
