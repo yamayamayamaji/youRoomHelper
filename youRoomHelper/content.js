@@ -29,7 +29,7 @@ var youRoomHelperCS = {
 			function(res){
 				var s = res.settings;
 				if (s) { this.settings = s; }
-
+				//オプション設定の内容にあわせて機能をOn/Off
 				//ソーシャルガジェットを非表示にする
 				if (s.hideSocialGadget) {
 					this.hideSocialGadgets();
@@ -42,12 +42,17 @@ var youRoomHelperCS = {
 				if (s.enableMeetingMode) {
 					this.meetingModeMgr.ready();
 				}
-				//トピックurlをワンクリックでコピーできるようにする
-				// if (s.enableTopicUrlOneClickCopy) {
-					this.topicUrlOneClickCopy.enable();
-				// }
 			}.bind(this)
  		);
+
+		//トピックurlをワンクリックでコピーできるようにする
+		// if (s.enableTopicUrlOneClickCopy) {
+			this.topicUrlOneClickCopy.enable();
+		// }
+		//検索結果画面で元スレッドへのリンクにアイコンを追加する
+		if (this.showing('search')) {
+			this.iconizeThreadLink();
+		}
 	},
 
 	/**
@@ -71,11 +76,17 @@ var youRoomHelperCS = {
 	},
 
 	/**
-	 * ホーム画面にいるかどうか
-	 * @return {boolean} ホーム画面にいるかどうか
+	 * 指定された画面にいるかどうか
+	 * @param  {string} name 画面の名前
+	 * @return {boolean} 指定された画面にいるかどうか
 	 */
-	inHome: function(){
-		return location.pathname.match(/^\/*$/);
+	showing: function(name){
+		switch (name) {
+		case 'home':
+			return location.pathname.match(/^\/*$/);
+		case 'search':
+			return location.pathname.match(/^\/search\?*/);
+		}
 	},
 
 	/**
@@ -107,7 +118,7 @@ var youRoomHelperCS = {
 
 			//ミーティングモード用移動ボタンを表示
 			//(ホーム画面)
-			if (this.owner.inHome) {
+			if (this.owner.showing('home')) {
 				//ホーム画面ではajaxで内容が読み込まれるのを待ちながらリトライする
 				this.owner.retryMgr.reg(
 					function(){ return $('.entry-container').length; },
@@ -494,7 +505,7 @@ var youRoomHelperCS = {
 
 			//さらにホーム画面ではコンテンツの読み込みを待つ必要があるので
 			//documentにトリガーを仕込んでおく
-			if (owner.inHome) {
+			if (owner.showing('home')) {
 				$(document.body).one('mousedown.yrh',
 					this.commentShowBtnSelector,
 					this.prepareForAddListener.bind(this));
@@ -545,6 +556,14 @@ var youRoomHelperCS = {
 			$('#column1').find(this.scopeSelector).off('.yrh');
 			$(this.commentShowBtnSelector).off('.yrh');
 		}
+	},
+
+	/**
+	 * 元スレッドへのリンクにアイコンを追加する
+	 */
+	iconizeThreadLink: function(){
+		var ss = $('<style type="text/css">').appendTo('head').get(0).sheet;
+		ss.insertRule('li.entry-time a:after { content: url("' + chrome.extension.getURL('/images/goto_thread.png') + '");margin-left:3px;position:relative;top:2px}', 0);
 	},
 
 	/**

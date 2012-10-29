@@ -1,7 +1,7 @@
 {
   "name": "youRoomHelper",
 
-  "version": "1.0.1.0",
+  "version": "1.0.2.0",
 
   "description": "youRoom helper for more comfortable use",
 
@@ -51,6 +51,7 @@
 
   "web_accessible_resources": [
     "images/meeting.png", "meeting.css",
-    "images/clipboard.png"
+    "images/clipboard.png",
+    "images/goto_thread.png"
   ]
 }
