@@ -1,7 +1,7 @@
 {
   "name": "youRoomHelper",
 
-  "version": "1.0.0.0",
+  "version": "1.0.2.0",
 
   "description": "youRoom helper for more comfortable use",
 
@@ -49,7 +49,9 @@
     "notifications"
   ],
 
-  "update_url": "https://github.com/yamayamayamaji/youRoomHelper/blob/master/updates.xml",
-
-  "web_accessible_resources": ["images/meeting.png", "meeting.css"]
+  "web_accessible_resources": [
+    "images/meeting.png", "meeting.css",
+    "images/clipboard.png",
+    "images/goto_thread.png"
+  ]
 }

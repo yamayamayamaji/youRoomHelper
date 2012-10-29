@@ -6,8 +6,8 @@
  *
  * License: MIT
  */
-
-youRoomHelperCS = {
+"use strict";
+var youRoomHelperCS = {
 	/**
 	 * localStorage・sessionStorageに使用しているkey
 	 */
@@ -29,7 +29,7 @@ youRoomHelperCS = {
 			function(res){
 				var s = res.settings;
 				if (s) { this.settings = s; }
-
+				//オプション設定の内容にあわせて機能をOn/Off
 				//ソーシャルガジェットを非表示にする
 				if (s.hideSocialGadget) {
 					this.hideSocialGadgets();
@@ -44,6 +44,15 @@ youRoomHelperCS = {
 				}
 			}.bind(this)
  		);
+
+		//トピックurlをワンクリックでコピーできるようにする
+		// if (s.enableTopicUrlOneClickCopy) {
+			this.topicUrlOneClickCopy.enable();
+		// }
+		//検索結果画面で元スレッドへのリンクにアイコンを追加する
+		if (this.showing('search')) {
+			this.iconizeThreadLink();
+		}
 	},
 
 	/**
@@ -58,12 +67,26 @@ youRoomHelperCS = {
 	 * Shift + Enter で投稿できるようにする
 	 */
 	enableShiftEnterPost: function(){
-		$('#column1').on('keydown', '.entry_content', function(e){
+		$('#column1, #cluetip').on('keydown', '.entry_content', function(e){
 			if (e.keyCode == 13 && e.shiftKey) {
-				$(this).closest('form').find('input:submit').get(0).click();
+				$(this).closest('form').find('input.count_submit').get(0).click();
 				e.preventDefault();
 			}
 		});
+	},
+
+	/**
+	 * 指定された画面にいるかどうか
+	 * @param  {string} name 画面の名前
+	 * @return {boolean} 指定された画面にいるかどうか
+	 */
+	showing: function(name){
+		switch (name) {
+		case 'home':
+			return location.pathname.match(/^\/*$/);
+		case 'search':
+			return location.pathname.match(/^\/search\?*/);
+		}
 	},
 
 	/**
@@ -81,6 +104,7 @@ youRoomHelperCS = {
 			topMargin: 5,
 			bottomMargin: 100
 		},
+		HAS_MEETINGBTN_CLS: 'has-meetingbtn',
 		READING_CLS: 'now-reading',
 		HAS_READ_CLS: 'has-read',
 		UNREAD_MARK_CLS: 'unread-comment-dot',
@@ -94,13 +118,16 @@ youRoomHelperCS = {
 
 			//ミーティングモード用移動ボタンを表示
 			//(ホーム画面)
-			if (location.pathname.match(/^\/*$/)) {
+			if (this.owner.showing('home')) {
 				//ホーム画面ではajaxで内容が読み込まれるのを待ちながらリトライする
 				this.owner.retryMgr.reg(
 					function(){ return $('.entry-container').length; },
 					this.addMeetingBtn, this);
 			} else {
-				this.addMeetingBtn();
+				var self = this;
+				$('#entries-container').on('mouseenter',
+					'.entry-container:not(.has-meetingbtn)',
+					function(){ self.addMeetingBtn(this); });
 			}
 
 			//ミーティングモード起動条件が揃っていればミーティングを起動
@@ -118,20 +145,22 @@ youRoomHelperCS = {
 		/**
 		 * ミーティングモード用移動ボタンを追加
 		 */
-		addMeetingBtn: function(){
-			var imgUrl = chrome.extension.getURL('/images/meeting.png');
-			var storeKey = this.MEETING_MODE_KEY;
-			$('.entry-container').each(function(){
-				var $this = $(this), c;
-				var entryRoom = $this.find('[name=parma_url]').val();
-				var $ul = $('<ul class="topic-edit-actions"><li><p class="btn-edit">' +
-							'<a href="' + entryRoom + '"><span>ミーティング</span></a>');
-				var $a = $ul.find('a')
+		addMeetingBtn: function(container){
+			var imgUrl = chrome.extension.getURL('/images/meeting.png'),
+				storeKey = this.MEETING_MODE_KEY,
+				$ctn = container ? $(container) : $('.entry-container');
+			$ctn.each(function(){
+				var $this = $(this),
+					entryRoom = $this.find('[name=parma_url]').val(),
+					$ul = $('<ul class="topic-edit-actions"><li><p class="btn-edit">' +
+							'<a href="' + entryRoom + '"><span>ミーティング</span></a>'),
+					$a = $ul.find('a')
 						.css({backgroundImage: 'url(' + imgUrl + ')'})
 						.click(function(){
 							sessionStorage[storeKey] = 'on';
 						});
-				$this.find('.action-wrapper').prepend($ul);
+				$this.addClass('has-meetingbtn')
+					.find('.action-wrapper').prepend($ul);
 			});
 		},
 
@@ -260,7 +289,7 @@ youRoomHelperCS = {
 		 * @return {boolean} 描画したかどうか
 		 */
 		renderComment: function(commentId, newContentsDom){
-			const CONTAINER_SELECTOR = '.comment-container';
+			var CONTAINER_SELECTOR = '.comment-container';
 			var $newContainer = $(newContentsDom).find('#' + commentId)
 									.closest(CONTAINER_SELECTOR),
 				wrapperId = $newContainer.find('.comment-wrapper-lv1[id^=entry]')
@@ -329,9 +358,9 @@ youRoomHelperCS = {
 				this.unreadBadge = $('<span id="yrhUnreadBadge" class="unreadBadge">')
 									.text('0').appendTo('body');
  			}
-			const EFE_INCREASE = 'bounceIn',
-					EFE_DECREASE = 'bounceOut',
-					EFFECTS = EFE_INCREASE + ' ' + EFE_DECREASE;
+			var EFE_INCREASE = 'bounceIn',
+				EFE_DECREASE = 'bounceOut',
+				EFFECTS = EFE_INCREASE + ' ' + EFE_DECREASE;
 			var badge = this.unreadBadge,
 				bef = badge.text(),
 				aft = this.unreadCommentIds.length,
@@ -454,6 +483,87 @@ youRoomHelperCS = {
 			//未読件数バッジを更新
 			this.updateUnreadBadge();
 		}
+	},
+
+	/**
+	 * トピックurlワンクリックコピーマネージャ
+	 * @type {Object}
+	 */
+	topicUrlOneClickCopy: {
+		scopeSelector: '.topic_top_action',
+		commentShowBtnSelector: '.comments-number-area',
+		//ワンクリックコピー有効化
+		enable: function(){
+			var owner = youRoomHelperCS;
+			//#コメント表示ボタン=$(.comments-number-area)
+			//コメント表示ボタンにclickイベントリスナを追加したいが
+			//コメント表示ボタンのclickイベントは既存リスナ内でバブリングが止められているので
+			//bindで追加する必要がある。
+			//そうすると動的に作られた新たなコメント表示ボタンには追加リスナは設定されない。
+			//なのでon(=delegate)でmouseupイベントにリスナを登録しておき、その中で
+			//clickイベントのリスナをbindする。
+
+			//さらにホーム画面ではコンテンツの読み込みを待つ必要があるので
+			//documentにトリガーを仕込んでおく
+			if (owner.showing('home')) {
+				$(document.body).one('mousedown.yrh',
+					this.commentShowBtnSelector,
+					this.prepareForAddListener.bind(this));
+			} else {
+				this.prepareForAddListener();
+			}
+		},
+		//コメント表示ボタンにイベントリスナを登録する準備をする
+		prepareForAddListener: function(){
+			$('#column1').find(this.scopeSelector).one('mouseup.yrh',
+				this.commentShowBtnSelector,
+				this.addListenerToCommentNumBtn.bind(this));
+		},
+		//コメント表示ボタンにイベントリスナを登録する
+		addListenerToCommentNumBtn: function(event){
+			var $btn = $(event.currentTarget);
+			$btn.bind('click.yrh', this.handleCommentNumClick.bind(this));
+		},
+		//コメント表示ボタンのクリックハンドラ
+		handleCommentNumClick: function(event){
+			var $btn = $(event.currentTarget);
+			if($btn.hasClass('cluetip-clicked')){
+				this.placeCopyToClipboardBtn();
+			}
+		},
+		//cluetipにトピックurlコピーボタンを設置する
+		placeCopyToClipboardBtn: function(){
+			var imgUrl = chrome.extension.getURL('/images/clipboard.png'),
+				copybtnHtml = '<image src="' + imgUrl + '" class="copybtn" title="copy to clipboard" style="height:16px;margin-left:-8px;position:relative;top:-2px;width:16px;">',
+				$urlBox = $('#cluetip').find('.click-select'),
+				url = $urlBox.val(),
+				$btn = $(copybtnHtml).bind({
+					click: function(){
+						//クリップボードにコピー
+						chrome.extension.sendMessage(
+							{task: {key: 'copyToClipBoard', str: url}},
+							function(res){
+						});
+					},
+					mouseenter: function(){ $(this).prev().get(0).select(); },
+					mouseleave: function(){ $(this).prev().get(0).blur(); }
+				});
+ 			$urlBox.width($urlBox.width() - 10).after($btn);
+		},
+		//ワンクリックコピー無効化
+		disable: function(){
+			$('#cluetip').find('.copybtn').remove();
+			$('#column1').find(this.scopeSelector).off('.yrh');
+			$(this.commentShowBtnSelector).off('.yrh');
+		}
+	},
+
+	/**
+	 * 元スレッドへのリンクにアイコンを追加する
+	 */
+	iconizeThreadLink: function(){
+		var ss = $('<style type="text/css">').appendTo('head').get(0).sheet;
+		ss.insertRule('li.entry-time a:after { content: url("' + chrome.extension.getURL('/images/goto_thread.png') + '");margin-left:3px;position:relative;top:2px}', 0);
 	},
 
 	/**
