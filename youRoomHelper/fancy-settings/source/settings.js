@@ -16,4 +16,4 @@ window.addEvent("domready", function(){
             m.meetingModeInterval.element.disabled = !this.element.checked;
         });
     });
-    });
+});

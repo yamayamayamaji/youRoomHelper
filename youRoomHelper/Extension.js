@@ -58,8 +58,8 @@ Extension.prototype = {
 		details: function(){
 			return this.getDetails();
 		},
-		storage: function(){
-			return localStorage;
+		storage: function(opt){
+			return this.getLocalStorage(opt.search);
 		},
 		isUpdated: function(){
 			return this.versionMgr.isUpdated();
@@ -80,7 +80,7 @@ Extension.prototype = {
 		notifyIfUpgraded: function(){
 			this.versionMgr.notifyIfUpgraded();
 		},
-		copyToClipBoard: function(opt,a,b){
+		copyToClipBoard: function(opt){
 			this.copyToClipBoard(opt.str);
 		}
 	},
@@ -184,6 +184,22 @@ Extension.prototype = {
 	},
 
 	/**
+	 * localStorageの内容を返す
+	 * @param  {string} search ここに指定された文字列をkeyに含むもののみ取得する
+	 * @return {object}        localStorageをsearchでフィルタリングしたJSON
+	 */
+	getLocalStorage: function(search){
+		var obj = {}, val;
+		for (var key in localStorage) {
+			if (key.indexOf(search) !== -1) {
+				val = localStorage[key];
+				obj[key] = JSON.parse(val);
+			}
+		};
+		return obj;
+	},
+
+	/**
 	 * ページアクション(アイコン)を表示
 	 * @param  {integer} tabId　アイコンを表示するタブのid
 	 */
@@ -247,7 +263,7 @@ Extension.prototype = {
 	},
 
 	/**
-	 * クリップボードにコピーする
+	 * 渡された文字列をクリップボードにコピーする
 	 * @param  {string} str コピーする文字列
 	 */
 	copyToClipBoard: function(str){

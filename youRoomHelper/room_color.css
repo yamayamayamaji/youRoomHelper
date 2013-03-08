@@ -1,0 +1,99 @@
+/*!
+ * room_color.css
+ * in youRoomHelper (Google Chrome Extension)
+ * https://github.com/yamayamayamaji/youRoomHelper
+ * Copyright 2013, Ryosuke Yamaji
+ *
+ * License: MIT
+ */
+#facade-canvas {
+	border: 1px solid #cccccc;
+}
+
+#color-controll-box {
+	/*background-color: #e5f1ed;*/
+	background-color: #fff;
+	border: 3px solid #a3bc71;
+	border-radius: 4px;
+	box-shadow: 0px 0px 10px rgba(0, 0, 0, .8);
+	-webkit-box-shadow: 1px 2px 12px rgba(0, 0, 0, .8);
+	display: none;
+	height: 230px;
+	padding: 10px;
+	position: absolute;
+	text-align: center;
+	width: 140px;
+}
+#color-controll-box::before, #color-controll-box::after {
+	border: solid transparent;
+	content: " ";
+	height: 0;
+	margin-right: -10px;
+	right: 100%;
+	pointer-events: none;
+	position: absolute;
+	top: 50%;
+	transform: rotate(45deg);
+	-webkit-transform: rotate(45deg);
+	width: 0;
+}
+#color-controll-box::before {
+	border-bottom-color: #a3bc71;
+	border-left-color: #a3bc71;
+	border-width: 10px;
+	/*box-shadow: -2px 2px 5px #000;*/
+	margin-top: 35px;
+}
+#color-controll-box::after {
+	border-bottom-color: #fff;
+	border-left-color: #fff;
+	border-width: 8px;
+	margin-top: 37px;
+}
+#color-controll-box .preview {
+}
+
+#color-controll-box .sliders {
+}
+#color-controll-box .sliders .slider-wrap {
+	height: 8px;
+	margin: 20px 0;
+	width: 100%;
+}
+#color-controll-box .sliders .slider-wrap:nth-child(1) {
+	background-image: linear-gradient(left, #3ff, #f33);
+	background-image: -webkit-linear-gradient(left, #3ff, #f33);
+}
+#color-controll-box .sliders .slider-wrap:nth-child(2) {
+	background-image: linear-gradient(left, #f3f, #3f3);
+	background-image: -webkit-linear-gradient(left, #f3f, #3f3);
+}
+#color-controll-box .sliders .slider-wrap:nth-child(3) {
+	background-image: linear-gradient(left, #ff3, #33f);
+	background-image: -webkit-linear-gradient(left, #ff3, #33f);
+}
+#color-controll-box .sliders input[type=range] {
+	position: relative;
+	text-align: right;
+	top: -8px;
+	width: 96%;
+}
+#color-controll-box .button-wrap {
+	padding: 3px;
+}
+#color-controll-box .button-wrap::after {
+	clear: both;
+}
+#color-controll-box .save-btn {
+	float: right;
+}
+#color-controll-box .reset-btn {
+	cursor: pointer;
+	float: left;
+	font-size: 12px;
+	text-decoration: underline;
+}
+#color-controll-box .reset-btn:hover {
+	color: #228b22;
+	text-decoration: none;
+}

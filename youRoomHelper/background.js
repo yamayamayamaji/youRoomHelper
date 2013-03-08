@@ -35,6 +35,9 @@ youRoomHelper = _.extend(new Extension({
 	get: {
 		settings: function(){
 			return this.getSettings();
+		},
+		roomColorInfo: function(){
+			return this.getRoomColorInfo();
 		}
 	},
 
@@ -45,28 +48,53 @@ youRoomHelper = _.extend(new Extension({
 	execute: {
 		changePageAction: function(opt, sender){
 			this.changePageActionIcon(opt.type, sender.tab.id);
+		},
+		saveRoomColorInfo: function(opt){
+			this.saveRoomColorInfo(opt.roomId, opt.colorInfo);
 		}
 	},
 
 	/**
-	 * オプション設定値を取得する
+	 * 拡張機能のオプション設定値を取得する
 	 * @return {object} オプション設定値のJSON
 	 */
 	getSettings: function(){
-		var prefix = 'store.settings.',
-			opts = {}, val;
-		for (var key in localStorage) {
-			if (key.indexOf(prefix) !== -1) {
-				val = localStorage[key];
-				if (val === 'true') {
-					val = true;
-				} else if (val === 'false') {
-					val = false;
-				}
-				opts[key.replace(prefix, '')] = val;
-			}
-		};
+		const PREFIX = 'store.settings.';
+		var ls = this.getLocalStorage(PREFIX),
+			opts = {};
+		for (var key in ls) {
+			opts[key.replace(PREFIX, '')] = ls[key];
+		}
 		return opts;
+	},
+
+	/**
+	 * ルームカラー情報を取得する
+	 * @return {object} オプション設定値のJSON
+	 */
+	getRoomColorInfo: function(){
+		const PREFIX = 'roomColorInfo.';
+		var ls = this.getLocalStorage(PREFIX),
+			colorInfo = {};
+		for (var key in ls) {
+			colorInfo[key.replace(PREFIX, '')] = ls[key];
+		}
+		return colorInfo;
+	},
+
+	/**
+	 * ルームカラー情報を保存する
+	 * @param  {String} roomId    ルームID
+	 * @param  {Object} colorInfo カラー情報
+	 */
+	saveRoomColorInfo: function(roomId, colorInfo){
+		const PREFIX = 'roomColorInfo.';
+		var key = PREFIX + roomId;
+		if (_.isEmpty(colorInfo)) {
+			localStorage.removeItem(key);
+		} else {
+			localStorage[key] = JSON.stringify(colorInfo);
+		}
 	},
 
 	/**
