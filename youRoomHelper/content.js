@@ -669,7 +669,8 @@ youRoomHelperCS.roomColorMgr = {
 
 		//カラーリング対象画像プリロード
 		$.each(this.colorPartImages, function(name, info){
-			var img = new Image();
+			// var img = new Image();
+			var img = document.createElement('img');
 			img.onload = function(){
 				var images = this.colorPartImages;
 				for (name in images) {
@@ -1136,7 +1137,10 @@ youRoomHelperCS.roomColorMgr = {
 
 			var height = height || 55,
 				width = width || 40,
-				img = new Image(width, height);
+				// img = new Image(width, height);
+				img = document.createElement('img');
+			img.width = width;
+			img.height = height;
 			img.src = this.getCanvas().toDataURL();
 			return img;
 		}

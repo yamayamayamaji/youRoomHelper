@@ -5,6 +5,11 @@
 </head>
 <body>
 <ul>
+  <li><h3>ver2.0.0.1 2013-04-02</h3>
+    <h4>修正</h4>
+    <p>・一部環境下でルームカラー管理機能が動かない問題への対応。<br>
+    (chromeのあるバージョンからcontent scriptコンテキストで new Image() instanceof HTMLImageElementがfalseになる<br>
+    とりあえずdocument.createElement('img')を使うように修正。)
   <li><h3>ver2.0.0.0 2013-03-08</h3>
     <h4>機能追加</h4>
     <p>・ルーム毎にカラーを指定できるようにしました。(アカウント > 設定 > ルームカラー)
