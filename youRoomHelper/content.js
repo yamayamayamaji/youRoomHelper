@@ -2,12 +2,12 @@
  * content.js
  * in youRoomHelper (Google Chrome Extension)
  * https://github.com/yamayamayamaji/youRoomHelper
- * Copyright 2012, Ryosuke Yamaji
+ * Copyright, Ryosuke Yamaji
  *
  * License: MIT
  */
 "use strict";
-var youRoomHelperCS = {
+var youRoomHelper = {
 	/**
 	 * localStorage・sessionStorageに使用しているkey
 	 */
@@ -24,7 +24,7 @@ var youRoomHelperCS = {
 
 		chrome.extension.sendMessage(
 			{
-				require: ['settings'/*, 'roomColorInfo2'*/],
+				require: ['settings'],
 				task: ['showPageAction', 'notifyIfUpgraded']
 			},
 			function(res){
@@ -56,6 +56,174 @@ var youRoomHelperCS = {
 //		}
 		//スレッドへのリンクにアイコンを追加する
 		this.iconizeThreadLink();
+
+		//ブラウザ内プレビューボタンを作成する
+		setTimeout(function(){
+			this.appendStyleSheet('/css/content.css')
+			this.setupPreviewOnBrowserBtn();
+		}.bind(this), 1);
+	},
+
+	/**
+	 * ブラウザ内プレビューボタン設定
+	 */
+	setupPreviewOnBrowserBtn: function(){
+		//ボタンイベントリスナ
+		$(document.body).on('click', '.preview-on-browser',
+								this.clickPreviewOnBrowserBtn.bind(this));
+		//ボタン表示エフェクト
+		$(document.body).on({
+			mouseenter: function(){
+				if (!$(this).find('.preview-on-browser').length) {
+					youRoomHelper.createPreviewOnBrowserBtn();
+				}
+				$(this).find('.preview-on-browser').css('display', 'inline-block');
+			},
+			mouseleave: function(){
+				$(this).find('.preview-on-browser').css('display', '');
+			}
+		}, '.attachment_wrapper:has(.attach_file_link)');
+	},
+
+	/**
+	 * ブラウザ内プレビューボタン作成
+	 */
+	createPreviewOnBrowserBtn: function(){
+		var $fileLinks = $('.attach_file_link'),
+			isOfficeViewerInstalled, fileExtExp, regfileExt;
+		//OfficeViewerがインストールされているか調べる
+		try {
+			$.ajax({
+				async: false,
+				timeout: 1000,
+				type: 'HEAD',
+				//Chrome Office Viewer (Beta)
+				url: "chrome-extension://gbkeegbaiigmenfmjfclcdgdpimamgkj/views/qowt.html"
+			}).done(function(){
+				isOfficeViewerInstalled = true;
+			});
+		} catch (e) { /*ignore*/ };
+
+		fileExtExp = 'txt|html?|xml|css|js|pdf|jpg|gif|png';
+		//OfficeViewerがインストールされている場合はofficeドキュメントも対象
+		if (isOfficeViewerInstalled) {
+			fileExtExp += '|docx?|xlsx?|pptx?|od[tsp]';
+		}
+
+		regfileExt = new RegExp('\\.(' + fileExtExp + ')', 'i');
+		//ボタン作成
+		$fileLinks.each(function(){
+			var $flink = $(this);
+			if (!$flink.text().match(regfileExt)) { return true; };
+			$('<span class="preview-on-browser" title="ブラウザで開く"></span>')
+			.css({ display: 'none' })
+			.insertAfter($flink);
+		});
+	},
+
+	/**
+	 * ブラウザ内プレビューボタン押下時処理
+	 */
+	clickPreviewOnBrowserBtn: function(evt){
+		var $btn = $(evt.target),
+			$flink = $btn.prev('a'),
+			token = $('meta[name=csrf-token]').attr('content'),
+			reqUrl = $flink.prop('href') + '?authenticity_token=' + encodeURIComponent(token),
+			fileName = $flink.text().trim();
+
+		this.viewFileInBrowser(reqUrl, fileName);
+	},
+
+	/**
+	 * 指定されたurlのファイルをブラウザで開く
+	 * @param  {String} fileUrl  ファイルURL(リクエストURL)
+	 * @param  {String} fileName ファイル名
+	 * @param  {Object} opt      オプション
+	 */
+	viewFileInBrowser: function(fileUrl, fileName, opt){
+		var opt = opt || {},
+			ctype, isTextFile, isOfficeDoc, isNonTarget, libReady;
+		//content-type取得
+		$.ajax(fileUrl, {
+			async: false,
+			type: 'HEAD'
+		}).done(function(data, status, jqXhr){
+			ctype = jqXhr.getResponseHeader('Content-Type');
+			//textファイル判定
+			isTextFile = !!ctype.match(/^text\//);
+			//officeドキュメント判定
+			isOfficeDoc = !!ctype.match(/(office|open)document|vnd\.ms\-/);
+			//対象外ファイル判定
+			isNonTarget = !!ctype.match(/octet\-stream|exe/);
+		});
+
+		if (isNonTarget) { alert('can not open this file'); return; }
+
+		//textファイルの場合は文字コード判定の為、Encodingライブラリを読み込む
+		if (isTextFile && !youRoomHelper.Encoding) {
+			libReady = youRoomHelper.loadEncodingLib();
+		} else {
+			libReady = true;
+		}
+
+		$.when(libReady).then(function(){
+			document.body.style.cursor = "wait";
+			//ファイルをバイナリで取得
+			var xhr = new XMLHttpRequest();
+			xhr.open('GET', fileUrl, true);
+			xhr.responseType = 'arraybuffer';
+			xhr.onload = function(evt){
+				if (this.status == 200) {
+					var bytes = new Uint8Array(this.response);
+					//textファイルの場合はファイルの中身の文字コードを判定し
+					//charsetを上書き
+					if (isTextFile) {
+						var charset = youRoomHelper.Encoding.detect(bytes);
+						ctype = ctype.replace(/(^.+charset=).+$/, '$1' + charset);
+					}
+
+					var blob = new Blob([bytes], { type: ctype }),
+						fixUrl = $.Deferred();
+
+					//officeドキュメントの場合、OfficeViewerで開けるように
+					//一旦ローカルにファイルを書き込む
+					//(OfficeViewerで開くには拡張子付きファイル名が必須)
+					if (isOfficeDoc) {
+						youRoomHelper.writeLocalFile(fileName, blob).then(function(file){
+							fixUrl.resolve(file.toURL());
+						});
+					} else {
+						fixUrl.resolve(URL.createObjectURL(blob));
+					}
+
+					fixUrl.then(function(url){
+						window.open(url, "_blank");
+					});
+				} else {
+					console.log('failed to open file');
+				}
+				document.body.style.cursor = "";
+			};
+			xhr.send();
+		});
+	},
+
+	/**
+	 * Encoding.jsライブラリを読み込む
+	 *  youRoomHelper.Encodingに読み込み時のjqXHRオブジェクトを設定し
+	 *  読み込み完了後Encodingオブジェクトを設定する。
+	 *  また戻り値としてはyouRoomHelper.Encodingを返す。
+	 * @param  {Object} opt jqXHRコンフィグ
+	 * @return {Object} Encodingライブラリ読み込みのPromiseオブジェクト
+	 */
+	loadEncodingLib: function(opt){
+		var jqxhr = $.ajax(
+			chrome.extension.getURL('/lib/encoding.js'),
+			opt || {}
+		).done(function(res){
+			(function(){ eval(res); }).call(youRoomHelper);
+		});
+		return youRoomHelper.Encoding = jqxhr;
 	},
 
 	/**
@@ -100,7 +268,7 @@ var youRoomHelperCS = {
 	 */
 	meetingModeMgr: {
 		INTERVAL: 3000,
-		owner: {}, //readyの中でyouRoomHelperCSをセット
+		owner: {}, //readyの中でyouRoomHelperをセット
 		newCommentQueue: [],
 		lastCommentTimestamp: '',
 		unreadCommentIds: [],
@@ -118,7 +286,7 @@ var youRoomHelperCS = {
 		 */
 		ready: function(){
 			var matches;
-			this.owner = youRoomHelperCS;
+			this.owner = youRoomHelper;
 			this.MEETING_MODE_KEY = this.owner.storeKey.MEETING_MODE;
 
 			//ミーティングモード用移動ボタンを表示
@@ -175,9 +343,9 @@ var youRoomHelperCS = {
 		boot: function(){
 			var self = this;
 			//css追加
-			this.owner.appendStyleSheet('meeting.css');
+			this.owner.appendStyleSheet('/css/meeting.css');
 			// $('<link rel="stylesheet" type="text/css">')
-			// 	.attr('href', chrome.extension.getURL('meeting.css'))
+			// 	.attr('href', chrome.extension.getURL('/css/meeting.css'))
 			// 	.insertAfter('link:last');
 
 			//pageActionアイコンを変更
@@ -389,8 +557,8 @@ var youRoomHelperCS = {
  		},
 
 		/**
-		　*　コメントが読める状態かどうか
-		　*　(コメントが一定範囲内に入っているか)
+		 * コメントが読める状態かどうか
+		 * (コメントが一定範囲内に入っているか)
 		 * @param  {string} commentId コメントID
 		 * @return {boolean} コメントが読める状態かどうか
 		 */
@@ -500,7 +668,7 @@ var youRoomHelperCS = {
 		commentShowBtnSelector: '.comments-number-area',
 		//ワンクリックコピー有効化
 		enable: function(){
-			var owner = youRoomHelperCS;
+			var owner = youRoomHelper;
 			//#コメント表示ボタン=$(.comments-number-area)
 			//コメント表示ボタンにclickイベントリスナを追加したいが
 			//コメント表示ボタンのclickイベントは既存リスナ内でバブリングが止められているので
@@ -633,8 +801,8 @@ var youRoomHelperCS = {
  * ルームカラーマネージャ
  * @type {Object}
  */
-youRoomHelperCS.roomColorMgr = {
-	owner: youRoomHelperCS,
+youRoomHelper.roomColorMgr = {
+	owner: youRoomHelper,
 	//カラー設定画面用仮想パス
 	virtualPath: '/users/edit_color',
 	colorEditTabId: 'color-edit',
@@ -687,7 +855,7 @@ youRoomHelperCS.roomColorMgr = {
 
 		//アカウント設定ページの場合
 		if (this.owner.isLocating('account_setting')) {
-			this.owner.appendStyleSheet('room_color.css');
+			this.owner.appendStyleSheet('/css/room_color.css');
 			this.initSettingPage();
 		} else {
 			this.coloringRoom();
@@ -869,7 +1037,7 @@ youRoomHelperCS.roomColorMgr = {
 			//(元)4列目
 			$td.filter(':nth-child(4)').find('p')
 			.on('click', function(evt){
-				var self = youRoomHelperCS.roomColorMgr,
+				var self = youRoomHelper.roomColorMgr,
 					$btn = $(this),
 					offset = $btn.offset(),
 					roomId = $btn.closest('tr').attr('id'),
@@ -885,7 +1053,7 @@ youRoomHelperCS.roomColorMgr = {
 			$table.find('tr').each(function(idx){
 				//ヘッダ行はスキップ
 				if (idx == 0) { return true; }
-				var self = youRoomHelperCS.roomColorMgr,
+				var self = youRoomHelper.roomColorMgr,
 					$tr = $(this),
 					$firstCol = $tr.find('td:nth-child(1)'),
 					roomUrl = $firstCol.find('a').attr('href'),
@@ -1026,7 +1194,7 @@ youRoomHelperCS.roomColorMgr = {
 		owner: {},
 
 		init: function(){
-			this.owner = youRoomHelperCS.roomColorMgr;
+			this.owner = youRoomHelper.roomColorMgr;
 			this.__isReady = new $.Deferred();
 			//カラーリング対象エリア設定[x, y, width, height]
 			this.colorPartRect = {
@@ -1153,7 +1321,7 @@ youRoomHelperCS.roomColorMgr = {
 	colorController: {
 		owner: {},
 		init: function(){
-			this.owner = youRoomHelperCS.roomColorMgr;
+			this.owner = youRoomHelper.roomColorMgr;
 			this.facade = this.owner.facadeEditor;
 			$(document).on('click', function(evt){
 				//コントロールボックスが表示されている時にボックス以外の場所がclickされたら
@@ -1295,4 +1463,4 @@ youRoomHelperCS.roomColorMgr = {
 	}
 };
 
-$(function(){youRoomHelperCS.init()});
+$(function(){youRoomHelper.init()});

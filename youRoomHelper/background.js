@@ -2,7 +2,7 @@
  * background.js
  * in youRoomHelper (Google Chrome Extension)
  * https://github.com/yamayamayamaji/youRoomHelper
- * Copyright 2012, Ryosuke Yamaji
+ * Copyright, Ryosuke Yamaji
  *
  * License: MIT
  */

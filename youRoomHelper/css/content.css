@@ -1,0 +1,19 @@
+/*!
+ * content.css
+ * in youRoomHelper (Google Chrome Extension)
+ * https://github.com/yamayamayamaji/youRoomHelper
+ * Copyright, Ryosuke Yamaji
+ *
+ * License: MIT
+ */
+
+.preview-on-browser {
+	background: url(/images/open_new_window.png) 0 0;
+	cursor: pointer;
+	height: 11px;
+	width: 12px;
+	margin-left: 7px;
+}
+.preview-on-browser:hover {
+	background-position: 0 11px;
+}
