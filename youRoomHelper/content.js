@@ -62,6 +62,9 @@ var youRoomHelper = {
 			this.appendStyleSheet('/css/content.css')
 			this.setupPreviewOnBrowserBtn();
 		}.bind(this), 1);
+
+		//新着コメントがある場合は通知する
+		this.newCommentsObserver.start();
 	},
 
 	/**
@@ -255,6 +258,8 @@ var youRoomHelper = {
 		switch (name) {
 		case 'home':
 			return location.pathname.match(/^\/*$/);
+		case 'room':
+			return location.pathname.match(/^\/r\/.*$/);
 		case 'search':
 			return location.pathname.match(/^\/search\?*/);
 		case 'account_setting':
@@ -267,7 +272,7 @@ var youRoomHelper = {
 	 * @type {Object}
 	 */
 	meetingModeMgr: {
-		INTERVAL: 3000,
+		DEF_INTERVAL: 3000,
 		owner: {}, //readyの中でyouRoomHelperをセット
 		newCommentQueue: [],
 		lastCommentTimestamp: '',
@@ -288,6 +293,8 @@ var youRoomHelper = {
 			var matches;
 			this.owner = youRoomHelper;
 			this.MEETING_MODE_KEY = this.owner.storeKey.MEETING_MODE;
+			this.interval = this.owner.settings && this.owner.settings.meetingModeInterval
+								|| this.DEF_INTERVAL;
 
 			//ミーティングモード用移動ボタンを表示
 			//(ホーム画面)
@@ -387,7 +394,7 @@ var youRoomHelper = {
 				},
 				this.handleNewComments.bind(this)
 			);
-			this.timer = setTimeout(this.getNewComments.bind(this), this.INTERVAL);
+			this.timer = setTimeout(this.getNewComments.bind(this), this.interval);
 		},
 
 		/**
@@ -740,6 +747,114 @@ var youRoomHelper = {
 		ss.insertRule('li.entry-time a:after { content: url("'
 			+ chrome.extension.getURL('/images/goto_thread.png')
 			+ '");margin-left:3px;position:relative;top:2px}', 0);
+	},
+
+	/**
+	 * 新着コメントを観測
+	 */
+	newCommentsObserver: {
+		markerId: 'yrh-notifier',
+		noticeFavicon: chrome.extension.getURL('/images/favicon-notifier.png'),
+		/**
+		 * 新着コメントの観測を開始
+		 */
+		start: function(){
+			this.orgFavicon = this.orgFavicon ||
+								this.getFaviconTag().attr('href');
+			this._id = window.setInterval(function(){
+				this.check();
+			}.bind(this), 3000/*3*60*1000*/);
+		},
+
+		/**
+		 * 新着通知処理
+		 * @param  {number} count 新着件数
+		 */
+		notify: function(count){
+			this.updateNotifier(count);
+			this.updateFavicon(count);
+		},
+
+		/**
+		 * 新着コメントの有無を確認
+		 * 新着コメントがある場合は通知処理を行う
+		 */
+		check: function(){
+			$.ajax('https://www.youroom.in/', {
+				data: {read_state: 'unread'},
+				dataType: 'json'
+			}).then(function(res){
+				var entries = res,
+					cnt = 0;
+				for (var i = 0, e, ids; e = entries[i++];) {
+					if (e.entry && (ids = e.entry.unread_comment_ids)) {
+						cnt += ids.split(',').length;
+					}
+				}
+				this.notify(cnt);
+			}.bind(this));
+		},
+
+		/**
+		 * 画面内の通知表示の更新
+		 * @param  {number} count 新着件数
+		 */
+		updateNotifier: function(count){
+			var $notifier = $('#' + this.markerId);
+			if (!count) {
+				$notifier.hide();
+			} else {
+				if (!$notifier.length) {
+					$notifier = $('<span id="' + this.markerId + '">').css({
+						backgroundColor: '#ff0033',
+						borderRadius: '5px',
+						display: 'inline-block',
+						height: '10px',
+						position: 'relative',
+						width: '10px'
+					});
+					$('#head-navi li').find(':contains(ホーム)')
+						.append($notifier);
+				}
+				$notifier.show();
+			}
+		},
+
+		/**
+		 * Faviconタグを返す
+		 * @return {Object} FaviconタグのjQueryオブジェクト
+		 */
+		getFaviconTag: function(){
+			return $('link').filter('[rel*="icon"]');
+		},
+
+		/**
+		 * Faviconタグを指定されたurlのFaviconのものに置き換える
+		 * @param  {String} newUrl 置き換え後のFaviconのurl
+		 */
+		replaceFaviconTag: function(newUrl){
+			var $fav = this.getFaviconTag().remove();
+			$fav.attr('href', newUrl).appendTo('head');
+		},
+
+		/**
+		 * Faviconの通知表示の更新
+		 * @param  {Number} count 新着件数
+		 */
+		updateFavicon: function(count){
+			var $favicon = this.getFaviconTag(),
+				curFav = $favicon.attr('href'),
+				expFav;
+			if (!count) {
+				expFav = this.orgFavicon;
+			} else {
+				expFav = this.noticeFavicon;
+			}
+			if (curFav != expFav) {
+				this.replaceFaviconTag(expFav);
+			}
+
+		}
 	},
 
 	/**
