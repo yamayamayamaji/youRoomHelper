@@ -296,7 +296,8 @@
             this.addEvents();
             
             if (this.params.name !== undefined) {
-                this.set((settings.get(this.params.name) || 0), true);
+                this.set((settings.get(this.params.name)
+                            || this.params.def || this.params.min || 0), true);
             } else {
                 this.set(0, true);
             }

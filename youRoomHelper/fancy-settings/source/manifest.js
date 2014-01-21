@@ -23,6 +23,22 @@ this.manifest = {
         },
         {
             "tab": i18n.get("settings"),
+            "group": i18n.get("general"),
+            "name": "commentCheckInterval",
+            "type": "slider",
+            "label": i18n.get("comment-check-interval") + ":",
+            "max": 300,
+            "min": 30,
+            "def": 60,
+            "step": 10,
+            "display": true,
+            "displayModifier": function(value){
+                value = value || 60;
+                return value + " " + i18n.get("seconds");
+            }
+        },
+        {
+            "tab": i18n.get("settings"),
             "group": i18n.get("meeting_mode"),
             "name": "enableMeetingMode",
             "type": "checkbox",
@@ -38,7 +54,7 @@ this.manifest = {
             "min": 3,
             "step": 1,
             "display": true,
-            "displayModifier": function (value) {
+            "displayModifier": function(value){
                 value = value || 3;
                 return value + " " + i18n.get("seconds");
             }

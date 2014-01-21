@@ -30,6 +30,10 @@ this.i18n = {
         "en": "Enable to post comments with Shift + Enter",
         "ja": "Shift + Enter でコメントを投稿できるようにする"
     },
+    "comment-check-interval": {
+        "en": "interval of check new comments (seconds)",
+        "ja": "新着コメントを確認する間隔 (秒)"
+    },
     "meeting_mode": {
         "en": "Meeting Mode",
         "ja": "ミーティングモード"
@@ -39,7 +43,7 @@ this.i18n = {
         "ja": "ミーティングモードを使用できるようにする"
     },
     "desc-meetingmode-interval": {
-        "en": "autoload interval in meeting mode",
-        "ja": "ミーティングモード時の自動読込間隔"
+        "en": "autoload interval in meeting mode (seconds)",
+        "ja": "ミーティングモード時の自動読込間隔 (秒)"
     }
 };

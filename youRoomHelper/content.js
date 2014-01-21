@@ -44,6 +44,9 @@ var youRoomHelper = {
 				if (s.enableMeetingMode) {
 					this.meetingModeMgr.ready();
 				}
+
+				//新着コメントがある場合は通知する
+				this.newCommentsObserver.start();
 			}.bind(this)
  		);
 
@@ -62,9 +65,6 @@ var youRoomHelper = {
 			this.appendStyleSheet('/css/content.css')
 			this.setupPreviewOnBrowserBtn();
 		}.bind(this), 1);
-
-		//新着コメントがある場合は通知する
-		this.newCommentsObserver.start();
 	},
 
 	/**
@@ -759,11 +759,14 @@ var youRoomHelper = {
 		 * 新着コメントの観測を開始
 		 */
 		start: function(){
+			var interval = (youRoomHelper.settings.commentCheckInterval || 60) * 1000;
+
 			this.orgFavicon = this.orgFavicon ||
 								this.getFaviconTag().attr('href');
+
 			this._id = window.setInterval(function(){
 				this.check();
-			}.bind(this), 3000/*3*60*1000*/);
+			}.bind(this), interval);
 		},
 
 		/**
