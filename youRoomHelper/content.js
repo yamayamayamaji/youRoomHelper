@@ -272,7 +272,7 @@ var youRoomHelper = {
 	 * @type {Object}
 	 */
 	meetingModeMgr: {
-		DEF_INTERVAL: 3000,
+		DEF_INTERVAL_SEC: 3,
 		owner: {}, //readyの中でyouRoomHelperをセット
 		newCommentQueue: [],
 		lastCommentTimestamp: '',
@@ -293,8 +293,8 @@ var youRoomHelper = {
 			var matches;
 			this.owner = youRoomHelper;
 			this.MEETING_MODE_KEY = this.owner.storeKey.MEETING_MODE;
-			this.interval = this.owner.settings && this.owner.settings.meetingModeInterval
-								|| this.DEF_INTERVAL;
+			this.interval = (this.owner.settings && this.owner.settings.meetingModeInterval
+								|| this.DEF_INTERVAL_SEC) * 1000;
 
 			//ミーティングモード用移動ボタンを表示
 			//(ホーム画面)
