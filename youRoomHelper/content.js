@@ -1077,7 +1077,7 @@ youRoomHelper.roomColorMgr = {
 	//アカウント設定画面にルームカラー設定タブを追加する
 	showColorEditTab: function(){
 		var href = /*location.origin +*/ this.virtualPath,
-			$li = $('#column1-setting').find(this.editTabsSelector + ':last');
+			$li = $('#account-setting').find(this.editTabsSelector + ':last');
 		if (!$li.length) { return; }
 		var $tab = $li.clone().attr('id', this.colorEditTabId)
 					.removeClass()
@@ -1106,7 +1106,7 @@ youRoomHelper.roomColorMgr = {
 
 	//指定された設定項目のタブを選択状態にする(元々選択されていたタブは非選択に)
 	setTabSelected: function(tab){
-		var currnetTab = $('#column1-setting').find(this.editTabsSelector)
+		var currnetTab = $('#account-setting').find(this.editTabsSelector)
 							.filter('.profile-nav-current').get(0);
 		$('#' + this.colorEditTabId).addClass(currnetTab.className);
 		$(tab).addClass(currnetTab.className);
